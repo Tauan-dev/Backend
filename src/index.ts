@@ -58,7 +58,7 @@ app.get("/api/total-entregues-hoje", (req: Request, res: Response) => {
   );
 });
 
-//# VIEW INGREDIENTES
+// VIEW INGREDIENTES
 
 app.get("/ingredientes", (req: Request, res: Response) => {
   const sql = "SELECT Nome, EstoqueAtual FROM ViewIngredientes";
@@ -117,6 +117,21 @@ app.get("/estoque-baixo/:limite", (req: Request, res: Response) => {
       }
     }
   );
+});
+
+app.post("/aplicar-desconto/:pedidoID", (req: Request, res: Response) => {
+  const pedidoID = req.params.pedidoID;
+
+  const sql = "CALL AplicarDescontoEmPedido(?)";
+
+  conn.query(sql, [pedidoID], (err, results) => {
+    if (err) {
+      console.error("Erro ao aplicar desconto:", err);
+      res.status(500).send("Erro ao processar a requisição");
+    } else {
+      res.send("Desconto aplicado com sucesso.");
+    }
+  });
 });
 
 // Rota GET para obter detalhes de um pedido específico utilizando o ID do pedido
@@ -192,7 +207,7 @@ app.get("/alerta-atraso/:pedidoID", (req: Request, res: Response) => {
         console.error("Erro ao executar a função AlertaAtraso:", err);
         res.status(500).send("Erro ao processar a requisição");
       } else {
-        res.send(results[0].MensagemAlerta); // Envia a mensagem de alerta ou confirmação de prazo
+        res.send(results[0].MensagemAlerta);
       }
     }
   );
@@ -253,27 +268,27 @@ app.put("/cliente/:cpf", (req: Request, res: Response) => {
   });
 });
 
-// Rota para inserir novos clientes
-app.post("/inserircliente", (req: Request, res: Response) => {
-  const { cpf, nome, email } = req.body;
+// // Rota para inserir novos clientes
+// app.post("/inserircliente", (req: Request, res: Response) => {
+//   const { cpf, nome, email } = req.body;
 
-  // Verifica se todos os campos obrigatórios foram fornecidos
-  if (!cpf || !nome || !email) {
-    return res
-      .status(400)
-      .json({ message: "Por favor, forneça CPF, nome e email do cliente." });
-  }
+//   // Verifica se todos os campos obrigatórios foram fornecidos
+//   if (!cpf || !nome || !email) {
+//     return res
+//       .status(400)
+//       .json({ message: "Por favor, forneça CPF, nome e email do cliente." });
+//   }
 
-  const sql = "INSERT INTO Cliente (CPF, Nome, Email) VALUES (?, ?, ?)";
-  conn.query(sql, [cpf, nome, email], (err, results) => {
-    if (err) {
-      console.error("Erro ao inserir o cliente:", err);
-      return res.status(500).send("Erro ao processar a requisição");
-    }
+//   const sql = "INSERT INTO Cliente (CPF, Nome, Email) VALUES (?, ?, ?)";
+//   conn.query(sql, [cpf, nome, email], (err, results) => {
+//     if (err) {
+//       console.error("Erro ao inserir o cliente:", err);
+//       return res.status(500).send("Erro ao processar a requisição");
+//     }
 
-    res.status(201).json({ message: "Cliente inserido com sucesso." });
-  });
-});
+//     res.status(201).json({ message: "Cliente inserido com sucesso." });
+//   });
+// });
 
 // Rota GET para visualizar todos os logs de eventos
 app.get("/logs-eventos", (req: Request, res: Response) => {
@@ -288,19 +303,46 @@ app.get("/logs-eventos", (req: Request, res: Response) => {
   });
 });
 
-// Rota POST para criar um pedido de pizza, acionando o gatilho de dedução de estoque
-app.post("/pedido-pizza", (req: Request, res: Response) => {
-  const { pedidoID, pizzaID, quantidade } = req.body;
-  const sql =
-    "INSERT INTO Pedido_Pizza (PedidoID, PizzaID, Quantidade) VALUES (?, ?, ?)";
-  conn.query(sql, [pedidoID, pizzaID, quantidade], (err, results) => {
-    if (err) {
-      console.error("Erro ao inserir o pedido de pizza:", err);
-      res.status(500).send("Erro ao processar a requisição");
-    } else {
-      res.send("Pedido de pizza registrado com sucesso.");
+app.post("/pedido-pizza", (req, res) => {
+  const { pedidoID, pizzaID, quantidade, ingredienteID } = req.body; // Extraímos ingredienteID do corpo da requisição
+
+  // Verifique se a pizza contém o ingrediente desejado
+  const verificaIngredienteSQL =
+    "SELECT * FROM Pizza_Ingrediente WHERE PizzaID = ? AND IngredienteID = ?";
+  conn.query(
+    verificaIngredienteSQL,
+    [pizzaID, ingredienteID], // Usamos a variável ingredienteID corretamente
+    (err, results) => {
+      if (err) {
+        console.error("Erro ao verificar ingrediente na pizza:", err);
+        res.status(500).send("Erro ao processar a requisição");
+        return;
+      }
+
+      // Se a pizza contiver o ingrediente, prossiga com a inserção do pedido de pizza
+      if (results.length > 0) {
+        const inserirPedidoSQL =
+          "INSERT INTO Pedido_Pizza (PedidoID, PizzaID, Quantidade) VALUES (?, ?, ?)";
+        conn.query(
+          inserirPedidoSQL,
+          [pedidoID, pizzaID, quantidade],
+          (err, results) => {
+            if (err) {
+              console.error("Erro ao inserir o pedido de pizza:", err);
+              res.status(500).send("Erro ao processar a requisição");
+            } else {
+              res.send("Pedido de pizza registrado com sucesso.");
+            }
+          }
+        );
+      } else {
+        // Caso contrário, a pizza não contém o ingrediente desejado
+        res
+          .status(400)
+          .send("A pizza selecionada não contém o ingrediente desejado.");
+      }
     }
-  });
+  );
 });
 
 // Rota GET para verificar o estoque atual de um ingrediente específico
