@@ -419,7 +419,7 @@ app.post("/confirmar-pedido", (req, res) => {
   const insertPagamentoSQL =
     "INSERT INTO Pagamento (PedidoID, Amount) VALUES (?, ?)";
   const updatePedidoSQL =
-    "UPDATE Pedido SET Status = 'Confirmado' WHERE ID = ? AND Status = 'Pendente'";
+    "UPDATE Pedido SET Status = 'Confirmado' WHERE ID = ? AND Status = 'Aguardando Pagamento'";
 
   conn.beginTransaction(function (err) {
     if (err) {
