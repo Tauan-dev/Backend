@@ -533,6 +533,20 @@ app.get("/recibos", (req, res) => {
   });
 });
 
+// Rota POST para inserir novos usuários
+app.post("/usuarios", (req, res) => {
+  const { cpf, nome, email } = req.body;
+  const sql = "INSERT INTO Cliente (CPF, Nome, Email) VALUES (?, ?, ?)";
+  conn.query(sql, [cpf, nome, email], (err, results) => {
+    if (err) {
+      console.error("Erro ao inserir novo usuário:", err);
+      res.status(500).send("Erro ao processar a requisição");
+    } else {
+      res.send("Novo usuário inserido com sucesso.");
+    }
+  });
+});
+
 app.listen(port, () => {
   console.log(`Servidor rodando na porta ${port}`);
 });
